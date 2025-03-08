@@ -72,8 +72,6 @@ class OrderView extends View
             if (isset($_POST['custom_delivery_price'])) {
                 $customDeliveryPrice = floatval($_POST['custom_delivery_price']);
                 if ($customDeliveryPrice >= 0) {
-                    $_SESSION['custom_delivery_price'] = $customDeliveryPrice;
-                    // Сразу обновляем заказ с новой стоимостью доставки
                     $this->orders->update_order($order->id, array('delivery_price' => $customDeliveryPrice));
                     $order = $this->orders->get_order((integer)$order->id);
                 }
@@ -109,14 +107,14 @@ class OrderView extends View
 			if(!empty($variants[$purchase->variant_id]))
 			{
 				$purchase->variant = $variants[$purchase->variant_id];
-			}
+			 }
 		}
 		
 		// Способ доставки
 		$delivery = $this->delivery->get_delivery($order->delivery_id);
-		// Если есть пользовательская стоимость доставки, используем её
-		if (isset($_SESSION['custom_delivery_price'])) {
-			$delivery->price = floatval($_SESSION['custom_delivery_price']);
+		// Используем сохраненную стоимость доставки из заказа
+		if ($order->delivery_price !== null) {
+			$delivery->price = $order->delivery_price;
 		}
 		$this->design->assign('delivery', $delivery);
 			
