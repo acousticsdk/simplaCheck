@@ -127,12 +127,12 @@ class Orders extends Simpla
 
 	public function update_order($id, $order)
 	{
-
-		    // Проверяем, какое значение `delivery_price` передается в метод
-            if (isset($order['delivery_price'])) {
-                var_dump($order['delivery_price']);
-                exit; // Останавливаем выполнение, чтобы увидеть результат
-            }
+		$order = (object)$order;
+		// Если передана пользовательская стоимость доставки
+		if (isset($_SESSION['custom_delivery_price'])) {
+			$order->delivery_price = floatval($_SESSION['custom_delivery_price']);
+			unset($_SESSION['custom_delivery_price']); // Очищаем сессию
+		}
 
 		$query = $this->db->placehold("UPDATE __orders SET ?%, modified=now() WHERE id=? LIMIT 1", $order, intval($id));
 		$this->db->query($query);
@@ -158,15 +158,12 @@ class Orders extends Simpla
 	public function add_order($order)
 	{
 		$order = (object)$order;
-
-		// Если пользователь ввел цену доставки вручную, берем ее из сессии
-            if (!empty($_SESSION['custom_delivery_price'])) {
-                $order->delivery_price = floatval($_SESSION['custom_delivery_price']);
-                unset($_SESSION['custom_delivery_price']); // Очищаем сессию после сохранения
-            }
-
-    var_dump($order->delivery_price); exit; // Проверяем значение перед сохранением
-
+		
+		// Если передана пользовательская стоимость доставки
+		if (isset($_SESSION['custom_delivery_price'])) {
+			$order->delivery_price = floatval($_SESSION['custom_delivery_price']);
+			unset($_SESSION['custom_delivery_price']); // Очищаем сессию после использования
+		}
 
 		$order->url = md5(uniqid($this->config->salt, true));
 		$set_curr_date = '';
@@ -621,4 +618,3 @@ class Orders extends Simpla
 		return $f5;
 	}		
 }
-
