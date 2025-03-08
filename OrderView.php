@@ -68,15 +68,16 @@ class OrderView extends View
 				$order = $this->orders->get_order((integer)$order->id);
 			}
 
-
-                    // Обработка пользовательской стоимости доставки
-                    if (!empty($_POST['custom_delivery_price'])) {
-                        $customDeliveryPrice = floatval($_POST['custom_delivery_price']);
-
-                        if ($customDeliveryPrice >= 0) { // Проверка на корректность
-                            $_SESSION['custom_delivery_price'] = $customDeliveryPrice;
-                        }
-                    }
+            // Обработка пользовательской стоимости доставки
+            if (isset($_POST['custom_delivery_price'])) {
+                $customDeliveryPrice = floatval($_POST['custom_delivery_price']);
+                if ($customDeliveryPrice >= 0) {
+                    $_SESSION['custom_delivery_price'] = $customDeliveryPrice;
+                    // Сразу обновляем заказ с новой стоимостью доставки
+                    $this->orders->update_order($order->id, array('delivery_price' => $customDeliveryPrice));
+                    $order = $this->orders->get_order((integer)$order->id);
+                }
+            }
 		}
 		
 		$products_ids = array();
@@ -113,6 +114,10 @@ class OrderView extends View
 		
 		// Способ доставки
 		$delivery = $this->delivery->get_delivery($order->delivery_id);
+		// Если есть пользовательская стоимость доставки, используем её
+		if (isset($_SESSION['custom_delivery_price'])) {
+			$delivery->price = floatval($_SESSION['custom_delivery_price']);
+		}
 		$this->design->assign('delivery', $delivery);
 			
 		$this->design->assign('order', $order);
@@ -131,8 +136,6 @@ class OrderView extends View
 
 		// Все валюты
 		$this->design->assign('all_currencies', $this->money->get_currencies());
-
-		
 		
 		// Выводим заказ
 		return $this->body = $this->design->fetch('order.tpl');
@@ -178,5 +181,4 @@ class OrderView extends View
 		}
 		return $form;
 	}
-
 }
