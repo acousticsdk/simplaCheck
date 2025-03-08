@@ -149,16 +149,16 @@ class Orders extends Simpla
 
 			$query = $this->db->placehold("DELETE FROM __orders_labels WHERE order_id=?", $id);
 			$this->db->query($query);
- 			
+
 			$query = $this->db->placehold("DELETE FROM __orders WHERE id=? LIMIT 1", $id);
 			$this->db->query($query);
 		}
 	}
-	
+
 	public function add_order($order)
 	{
 		$order = (object)$order;
-		
+
 		// Если передана пользовательская стоимость доставки
 		if (isset($_SESSION['custom_delivery_price'])) {
 			$order->delivery_price = floatval($_SESSION['custom_delivery_price']);
@@ -171,7 +171,7 @@ class Orders extends Simpla
 			$set_curr_date = ', date=now()';
 		$query = $this->db->placehold("INSERT INTO __orders SET ?%$set_curr_date", $order);
 		$this->db->query($query);
-		$id = $this->db->insert_id();		
+		$id = $this->db->insert_id();
 		return $id;
 	}
 
@@ -194,25 +194,25 @@ class Orders extends Simpla
 	* Создание метки заказов
 	* @param $label
 	*
-	*/	
+	*/
 	public function add_label($label)
-	{	
+	{
 		$query = $this->db->placehold('INSERT INTO __labels SET ?%', $label);
 		if(!$this->db->query($query))
 			return false;
 
 		$id = $this->db->insert_id();
-		$this->db->query("UPDATE __labels SET position=id WHERE id=?", $id);	
+		$this->db->query("UPDATE __labels SET position=id WHERE id=?", $id);
 		return $id;
 	}
-	
-	
+
+
 	/*
 	*
 	* Обновить метку
 	* @param $id, $label
 	*
-	*/	
+	*/
 	public function update_label($id, $label)
 	{
 		$query = $this->db->placehold("UPDATE __labels SET ?% WHERE id in(?@) LIMIT ?", $label, (array)$id, count((array)$id));
@@ -225,7 +225,7 @@ class Orders extends Simpla
 	* Удалить метку
 	* @param $id
 	*
-	*/	
+	*/
 	public function delete_label($id)
 	{
 		if(!empty($id))
@@ -241,27 +241,27 @@ class Orders extends Simpla
 				return false;
 			}
 		}
-	}	
-	
+	}
+
 	function get_order_labels($order_id = array())
 	{
 		if(empty($order_id))
 			return array();
 
 		$label_id_filter = $this->db->placehold('AND order_id in(?@)', (array)$order_id);
-				
+
 		$query = $this->db->placehold("SELECT ol.order_id, l.id, l.name, l.color, l.position
 					FROM __labels l LEFT JOIN __orders_labels ol ON ol.label_id = l.id
-					WHERE 
+					WHERE
 					1
-					$label_id_filter   
-					ORDER BY position       
+					$label_id_filter
+					ORDER BY position
 					");
-		
+
 		$this->db->query($query);
 		return $this->db->results();
 	}
-	
+
 	public function update_order_labels($id, $labels_ids)
 	{
 		$labels_ids = (array)$labels_ids;
@@ -308,23 +308,23 @@ class Orders extends Simpla
 		$this->db->query($query);
 		return $this->db->results();
 	}
-	
+
 	public function update_purchase($id, $purchase)
-	{	
+	{
 		$purchase = (object)$purchase;
 		$old_purchase = $this->get_purchase($id);
 		if(!$old_purchase)
 			return false;
-			
+
 		$order = $this->get_order(intval($old_purchase->order_id));
 		if(!$order)
 			return false;
-		
+
 		// Не допустить нехватки на складе
 		$variant = $this->variants->get_variant($purchase->variant_id);
 		if($order->closed && !empty($purchase->amount) && !empty($variant) && !$variant->infinity && $variant->stock<($purchase->amount-$old_purchase->amount))
 			return false;
-		
+
 		// Если заказ закрыт, нужно обновить склад при изменении покупки
 		if($order->closed && !empty($purchase->amount))
 		{
@@ -347,13 +347,13 @@ class Orders extends Simpla
 				$this->db->query($query);
 			}
 		}
-		
+
 		$query = $this->db->placehold("UPDATE __purchases SET ?% WHERE id=? LIMIT 1", $purchase, intval($id));
 		$this->db->query($query);
-		$this->update_total_price($order->id);		
+		$this->update_total_price($order->id);
 		return $id;
 	}
-	
+
 	public function add_purchase($purchase)
 	{
 		$purchase = (object)$purchase;
@@ -365,31 +365,31 @@ class Orders extends Simpla
 			$product = $this->products->get_product(intval($variant->product_id));
 			if(empty($product))
 				return false;
-		}			
+		}
 
 		$order = $this->get_order(intval($purchase->order_id));
 		if(empty($order))
-			return false;				
-	
+			return false;
+
 		// Не допустить нехватки на складе
 		if($order->closed && !empty($purchase->amount) && !$variant->infinity && $variant->stock<$purchase->amount)
 			return false;
-		
+
 		if(!isset($purchase->product_id) && isset($variant))
 			$purchase->product_id = $variant->product_id;
-				
+
 		if(!isset($purchase->product_name)  && !empty($product))
 			$purchase->product_name = $product->name;
-			
+
 		if(!isset($purchase->sku) && !empty($variant))
 			$purchase->sku = $variant->sku;
-			
+
 		if(!isset($purchase->variant_name) && !empty($variant))
 			$purchase->variant_name = $variant->name;
-			
+
 		if(!isset($purchase->price) && !empty($variant))
 			$purchase->price = $variant->price;
-			
+
 		if(!isset($purchase->amount))
 			$purchase->amount = 1;
 
@@ -404,8 +404,8 @@ class Orders extends Simpla
 		$query = $this->db->placehold("INSERT INTO __purchases SET ?%", $purchase);
 		$this->db->query($query);
 		$purchase_id = $this->db->insert_id();
-		
-		$this->update_total_price($order->id);		
+
+		$this->update_total_price($order->id);
 		return $purchase_id;
 	}
 
@@ -414,7 +414,7 @@ class Orders extends Simpla
 		$purchase = $this->get_purchase($id);
 		if(!$purchase)
 			return false;
-			
+
 		$order = $this->get_order(intval($purchase->order_id));
 		if(!$order)
 			return false;
@@ -426,20 +426,20 @@ class Orders extends Simpla
 			$query = $this->db->placehold("UPDATE __variants SET stock=stock+? WHERE id=? AND stock IS NOT NULL LIMIT 1", $stock_diff, $purchase->variant_id);
 			$this->db->query($query);
 		}
-		
+
 		$query = $this->db->placehold("DELETE FROM __purchases WHERE id=? LIMIT 1", intval($id));
 		$this->db->query($query);
-		$this->update_total_price($order->id);				
+		$this->update_total_price($order->id);
 		return true;
 	}
 
-	
+
 	public function close($order_id)
 	{
 		$order = $this->get_order(intval($order_id));
 		if(empty($order))
 			return false;
-		
+
 		if(!$order->closed)
 		{
 			$variants_amounts = array();
@@ -459,14 +459,14 @@ class Orders extends Simpla
 					return false;
 			}
 			foreach($purchases as $purchase)
-			{	
+			{
 				$variant = $this->variants->get_variant($purchase->variant_id);
 				if(!$variant->infinity)
 				{
 					$new_stock = $variant->stock-$purchase->amount;
 					$this->variants->update_variant($variant->id, array('stock'=>$new_stock));
 				}
-			}				
+			}
 			$query = $this->db->placehold("UPDATE __orders SET closed=1, modified=NOW() WHERE id=? LIMIT 1", $order->id);
 			$this->db->query($query);
 		}
@@ -478,31 +478,31 @@ class Orders extends Simpla
 		$order = $this->get_order(intval($order_id));
 		if(empty($order))
 			return false;
-		
+
 		if($order->closed)
 		{
 			$purchases = $this->get_purchases(array('order_id'=>$order->id));
 			foreach($purchases as $purchase)
 			{
-				$variant = $this->variants->get_variant($purchase->variant_id);				
+				$variant = $this->variants->get_variant($purchase->variant_id);
 				if($variant && !$variant->infinity)
 				{
 					$new_stock = $variant->stock+$purchase->amount;
 					$this->variants->update_variant($variant->id, array('stock'=>$new_stock));
 				}
-			}				
+			}
 			$query = $this->db->placehold("UPDATE __orders SET closed=0, modified=NOW() WHERE id=? LIMIT 1", $order->id);
 			$this->db->query($query);
 		}
 		return $order->id;
 	}
-	
+
 	public function pay($order_id)
 	{
 		$order = $this->get_order(intval($order_id));
 		if(empty($order))
 			return false;
-		
+
 		if(!$this->close($order->id))
 		{
 			return false;
@@ -511,18 +511,18 @@ class Orders extends Simpla
 		$this->db->query($query);
 		return $order->id;
 	}
-	
+
 	private function update_total_price($order_id)
 	{
 		$order = $this->get_order(intval($order_id));
 		if(empty($order))
 			return false;
-		
+
 		$query = $this->db->placehold("UPDATE __orders o SET o.total_price=IFNULL((SELECT SUM(p.price*p.amount)*(100-o.discount)/100 FROM __purchases p WHERE p.order_id=o.id), 0)+o.delivery_price*(1-o.separate_delivery)-o.coupon_discount, modified=NOW() WHERE o.id=? LIMIT 1", $order->id);
 		$this->db->query($query);
 		return $order->id;
 	}
-	
+
 
 	public function get_next_order($id, $status = null)
 	{
@@ -534,9 +534,9 @@ class Orders extends Simpla
 		if($next_id)
 			return $this->get_order(intval($next_id));
 		else
-			return false; 
+			return false;
 	}
-	
+
 	public function get_prev_order($id, $status = null)
 	{
 		$f = '';
@@ -547,17 +547,17 @@ class Orders extends Simpla
 		if($prev_id)
 			return $this->get_order(intval($prev_id));
 		else
-			return false; 
+			return false;
 	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
+
+
+
+
+
+
+
+
 	/**
 	 * Возвращает сумму прописью
 	 * @author runcore
@@ -616,5 +616,5 @@ class Orders extends Simpla
 		if ($n>1 && $n<5) return $f2;
 		if ($n==1) return $f1;
 		return $f5;
-	}		
+	}
 }
